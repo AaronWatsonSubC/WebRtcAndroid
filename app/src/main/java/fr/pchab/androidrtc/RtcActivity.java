@@ -71,7 +71,7 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
 
       //  mSocketAddress += (":" + (local ? "3000/" : "8889/"));
 
-        mSocketAddress = "http://192.168.2.67:8888";
+        mSocketAddress = "https://rtc.medialooks.com:8889";
 
         vsv = (GLSurfaceView) findViewById(R.id.glview_call);
         vsv.setPreserveEGLContextOnPause(true);
@@ -211,14 +211,14 @@ public class RtcActivity extends Activity implements WebRtcClient.RtcListener {
 
     @Override
     public void onAddRemoteStream(MediaStream remoteStream, int endPoint) {
-        remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoteRender));
+        /*remoteStream.videoTracks.get(0).addRenderer(new VideoRenderer(remoteRender));
         VideoRendererGui.update(remoteRender,
                 REMOTE_X, REMOTE_Y,
                 REMOTE_WIDTH, REMOTE_HEIGHT, scalingType, false);
         VideoRendererGui.update(localRender,
                 LOCAL_X_CONNECTED, LOCAL_Y_CONNECTED,
                 LOCAL_WIDTH_CONNECTED, LOCAL_HEIGHT_CONNECTED,
-                scalingType, false);
+                scalingType, false); */
     }
 
     @Override

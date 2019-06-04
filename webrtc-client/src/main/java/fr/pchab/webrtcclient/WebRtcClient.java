@@ -8,6 +8,7 @@ import com.github.nkzawa.emitter.Emitter;
 import com.github.nkzawa.socketio.client.IO;
 import com.github.nkzawa.socketio.client.Socket;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.webrtc.AudioSource;
@@ -32,7 +33,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class WebRtcClient {
     private final static String TAG = WebRtcClient.class.getCanonicalName();
-    private final static String NICKNAME = "stream";
+    private final static String NICKNAME = "Streamer8462";
+    private final static String ROOM_NAME = "Room3412";
     private final static Lock LOCK_SYNC = new ReentrantLock();
     private final static int MAX_PEER = 2;
     private boolean[] endPoints = new boolean[MAX_PEER];
@@ -42,10 +44,12 @@ public class WebRtcClient {
     private PeerConnectionParameters pcParams;
     private MediaConstraints pcConstraints = new MediaConstraints();
     private MediaStream localMS;
+    private Peer localPeer;
     private VideoSource videoSource;
     private RtcListener mListener;
     private Socket client;
     private String id;
+    private boolean offerRecieved = false;
 
     /**
      * Implement this interface to be notified of events.
@@ -76,6 +80,7 @@ public class WebRtcClient {
 
     private class CreateAnswerCommand implements Command {
         public void execute(String peerId, JSONObject payload) throws JSONException {
+            offerRecieved = true;
             Log.d(TAG, "CreateAnswerCommand");
             Peer peer = peers.get(peerId);
             SessionDescription sdp = new SessionDescription(
@@ -103,10 +108,6 @@ public class WebRtcClient {
     private class EndOfIceCandidatesCommand implements Command {
         public void execute(String peerId, JSONObject payload) throws JSONException {
             Log.d(TAG, "EndOfIceCandidatesCommand");
-            Peer peer = peers.get(peerId);
-            PeerConnection pc = peers.get(peerId).pc;
-            JSONObject payloadContents = new JSONObject();
-            pc.createOffer(peer, pcConstraints);
         }
     }
 
@@ -156,6 +157,19 @@ public class WebRtcClient {
             commandMap.put("endOfCandidates", new EndOfIceCandidatesCommand());
         }
 
+        private Emitter.Listener onLoggedIn = new Emitter.Listener() {
+            @Override
+            public void call(Object... args) {
+                try {
+                    JSONArray data = (JSONArray) args[0];
+                    ConfigureId(data.getString(0));
+                }
+                catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+
         private Emitter.Listener onMessage = new Emitter.Listener() {
             @Override
             public void call(Object... args) {
@@ -198,10 +212,22 @@ public class WebRtcClient {
             public void call(Object... args) {
                 id = (String) args[0];
                 sendInfo();
-                client.emit("join", "rayfin");
+                client.emit("join", ROOM_NAME);
                 mListener.onCallReady(id);
             }
         };
+    }
+
+    private void ConfigureId(String id) {
+        if(this.id != null) {
+            return;  //TODO:  Null ID on disconnect.
+        }
+        this.id = id;
+        sendInfo();
+        client.emit("join", ROOM_NAME);
+        mListener.onCallReady(id);
+
+        //start("android_test");
     }
 
     private class Peer implements SdpObserver, PeerConnection.Observer {
@@ -211,7 +237,7 @@ public class WebRtcClient {
 
         @Override
         public void onCreateSuccess(final SessionDescription sdp) {
-            // TODO: modify sdp to use pcParams prefered codecs
+            // TODO: modify sdp to use pcParams preferred codecs
             try {
                 JSONObject payload = new JSONObject();
                 payload.put("type", sdp.type.canonicalForm());
@@ -338,7 +364,7 @@ public class WebRtcClient {
         }
         client.on("id", messageHandler.onId);
         client.on("message", messageHandler.onMessage);
-        client.on("message", messageHandler.onMessage);
+        client.on("loggedin", messageHandler.onLoggedIn);
         client.connect();
 
 
@@ -415,7 +441,8 @@ public class WebRtcClient {
             message.put("multicastType", "");
             message.put("nickName", NICKNAME);
             message.put("peerType", "cpp");
-            message.put("vidBitrate", "300000");
+            message.put("vidBitrate", "500000");
+            message.put("enable_audio", "false");
             message.put("vidEncoder", "vp8");
             message.put("turn_password", "");
             message.put("turn_server", "");
@@ -430,6 +457,7 @@ public class WebRtcClient {
     }
     private void setCamera() {
         localMS = factory.createLocalMediaStream("ARDAMS");
+
         if (pcParams.videoCallEnabled) {
             MediaConstraints videoConstraints = new MediaConstraints();
             videoConstraints.mandatory.add(new MediaConstraints.KeyValuePair("maxHeight", Integer.toString(pcParams.videoHeight)));
